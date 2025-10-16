@@ -2,9 +2,14 @@
 
 # ---
 # Script para configurar ambiente, com controle de versão. (VERSÃO 5)
-# - Verifica a versão instalada antes de executar.
-# - Limpa versões antigas antes de baixar as novas.
-# - Executa o script de instalação do Zabbix no final.
+# 1. Verifica a versão instalada antes de executar.
+# 2. Limpa versões antigas antes de baixar as novas.
+# 3. Instala Docker (versão oficial), Docker Compose plugin, Python, Node.js (LTS), npm, Git e dependências do Electron.
+# 4. Detecta a pasta 'Documentos' ou 'Documents'.
+# 5. Clona os repositórios 'instalador-client-zabbix' e 'box-script' para dentro da pasta de documentos.
+# 6. Cria/atualiza o .env do box-script.
+# 7. Concede permissão de execução ao script do Zabbix.
+# 8. Executa o script de instalação do Zabbix no final.
 # ---
 
 # Interrompe o script se qualquer comando falhar
@@ -40,7 +45,52 @@ fi
 # -----------------------------------------------------------------------------
 echo "📦 Verificando e instalando dependências..."
 sudo apt-get update -y > /dev/null
-sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin python3 python3-pip nodejs git
+
+# Docker e Docker Compose plugin
+echo "Instalando Docker e Docker Compose plugin..."
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+# Python, Git
+echo "Instalando Python e Git..."
+sudo apt-get install -y python3 python3-pip git
+
+# Node.js (LTS) e npm
+echo "Instalando Node.js (LTS) e npm..."
+sudo apt-get install -y nodejs
+
+# Dependências do Electron (as do Dockerfile)
+echo "Instalando dependências do Electron..."
+sudo apt-get install -y \
+    libx11-xcb1 \
+    libxcb-dri3-0 \
+    libxtst6 \
+    libnss3 \
+    libatk-bridge2.0-0 \
+    libgtk-3-0 \
+    libxss1 \
+    libasound2 \
+    libdrm2 \
+    libgbm1 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    libxkbcommon0 \
+    libx11-6 \
+    libxcb1 \
+    libxext6 \
+    libxfixes3 \
+    libxi6 \
+    libgdk-pixbuf2.0-0 \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libcups2 \
+    libatk1.0-0 \
+    libcurl4 \
+    libgl1-mesa-glx \
+    libcanberra-gtk-module \
+    x11-apps
+
+echo "✅ Dependências instaladas com sucesso!"
 
 # 3. LIMPEZA DA VERSÃO ANTIGA
 # -----------------------------------------------------------------------------
@@ -65,6 +115,18 @@ if [ -d "$BOX_SCRIPT_PROJECT_PATH" ]; then
     echo "   -> Removido: $BOX_SCRIPT_PROJECT_PATH"
 fi
 
+# Repositório: Box Script
+echo "⏬ Verificando/Baixando 'box-script'..."
+if [ ! -d "box-script" ]; then
+    git clone https://github.com/InnovatioLab/box-script.git
+    echo "API_KEY=Qw8!pZr2@tLx7sVb6kJm9^eHf4&uYc1" > "$DEST_DIR/box-script/.env"
+    echo "✅ Arquivo .env criado em 'box-script' com API_KEY."
+else
+    echo "👍 Repositório 'box-script' já existe."
+    echo "API_KEY=Qw8!pZr2@tLx7sVb6kJm9^eHf4&uYc1" > "$DEST_DIR/box-script/.env"
+    echo "✅ Arquivo .env atualizado em 'box-script' com API_KEY."
+fi
+
 # 4. DOWNLOAD E CONFIGURAÇÃO
 # -----------------------------------------------------------------------------
 echo "📂 Projetos serão baixados em '$DEST_DIR'."
@@ -72,9 +134,6 @@ cd "$DEST_DIR"
 
 echo "⏬ Baixando 'instalador-client-zabbix'..."
 git clone https://github.com/InnovatioLab/instalador-client-zabbix.git
-
-echo "⏬ Baixando 'box-script'..."
-git clone https://github.com/InnovatioLab/box-script.git
 
 ZABBIX_SCRIPT_PATH="$ZABBIX_PROJECT_PATH/zabbix_manager_ubuntu.sh"
 
@@ -94,3 +153,4 @@ echo "💾 Salvando a versão da instalação atual ($CURRENT_VERSION)..."
 echo "$CURRENT_VERSION" > "$VERSION_FILE"
 
 echo "🎉🎉🎉 Instalação/Atualização para a versão $CURRENT_VERSION concluída com sucesso! 🎉🎉🎉"
+echo "Você pode encontrar os projetos em '$DEST_DIR'."
