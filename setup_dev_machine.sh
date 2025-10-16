@@ -1,23 +1,15 @@
 #!/bin/bash
 
 # ---
-# Script para configurar ambiente, com controle de versão. (VERSÃO 5)
-# 1. Verifica a versão instalada antes de executar.
-# 2. Limpa versões antigas antes de baixar as novas.
-# 3. Instala Docker (versão oficial), Docker Compose plugin, Python, Node.js (LTS), npm, Git e dependências do Electron.
-# 4. Detecta a pasta 'Documentos' ou 'Documents'.
-# 5. Clona os repositórios 'instalador-client-zabbix' e 'box-script' para dentro da pasta de documentos.
-# 6. Cria/atualiza o .env do box-script.
-# 7. Concede permissão de execução ao script do Zabbix.
-# 8. Executa o script de instalação do Zabbix no final.
+# Script para configurar ambiente, com controle de versão. (VERSÃO 7)
+# - Corrigido erro de sintaxe (falta de '\') no comando de instalação.
 # ---
 
 # Interrompe o script se qualquer comando falhar
 set -e
 
 # --- CONFIGURAÇÃO ---
-# Altere esta variável para forçar uma atualização na próxima vez que o script rodar.
-CURRENT_VERSION="1.0.0"
+CURRENT_VERSION="1.0.2" # Incrementado para garantir que a atualização rode
 VERSION_FILE="$HOME/.box_installer_version"
 # --------------------
 
@@ -32,7 +24,7 @@ fi
 
 if [ "$INSTALLED_VERSION" == "$CURRENT_VERSION" ]; then
     echo "✅ Você já possui a versão mais recente ($CURRENT_VERSION). Nenhuma ação necessária."
-    exit 0 # Encerra o script com sucesso
+    exit 0
 fi
 
 if [ -n "$INSTALLED_VERSION" ]; then
@@ -41,60 +33,26 @@ else
     echo "ℹ️  Nenhuma versão encontrada. Iniciando nova instalação..."
 fi
 
-# 2. INSTALAÇÃO DE DEPENDÊNCIAS
+# 2. INSTALAÇÃO DE DEPENDÊNCIAS (COM SINTAXE CORRIGIDA)
 # -----------------------------------------------------------------------------
-echo "📦 Verificando e instalando dependências..."
+echo "📦 Verificando e instalando todas as dependências..."
 sudo apt-get update -y > /dev/null
 
-# Docker e Docker Compose plugin
-echo "Instalando Docker e Docker Compose plugin..."
-sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
-
-# Python, Git
-echo "Instalando Python e Git..."
-sudo apt-get install -y python3 python3-pip git
-
-# Node.js (LTS) e npm
-echo "Instalando Node.js (LTS) e npm..."
-sudo apt-get install -y nodejs
-
-# Dependências do Electron (as do Dockerfile)
-echo "Instalando dependências do Electron..."
+# Comando único para instalar tudo, com a sintaxe de continuação de linha corrigida
 sudo apt-get install -y \
-    libx11-xcb1 \
-    libxcb-dri3-0 \
-    libxtst6 \
-    libnss3 \
-    libatk-bridge2.0-0 \
-    libgtk-3-0 \
-    libxss1 \
-    libasound2 \
-    libdrm2 \
-    libgbm1 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxrandr2 \
-    libxkbcommon0 \
-    libx11-6 \
-    libxcb1 \
-    libxext6 \
-    libxfixes3 \
-    libxi6 \
-    libgdk-pixbuf2.0-0 \
-    libpango-1.0-0 \
-    libpangocairo-1.0-0 \
-    libcups2 \
-    libatk1.0-0 \
-    libcurl4 \
-    libgl1-mesa-glx \
-    libcanberra-gtk-module \
-    x11-apps
+    docker-ce docker-ce-cli containerd.io docker-compose-plugin \
+    python3 python3-pip git nodejs \
+    libx11-xcb1 libxcb-dri3-0 libxtst6 libnss3 libatk-bridge2.0-0t64 \
+    libgtk-3-0t64 libxss1 libasound2t64 libdrm2 libgbm1 libxcomposite1 \
+    libxdamage1 libxrandr2 libxkbcommon0 libx11-6 libxcb1 libxext6 \
+    libxfixes3 libxi6 libgdk-pixbuf2.0-0 libpango-1.0-0 libpangocairo-1.0-0 \
+    libcups2t64 libatk1.0-0t64 libcurl4-gnutls-dev libgl1 libcanberra-gtk-module x11-apps
 
 echo "✅ Dependências instaladas com sucesso!"
 
-# 3. LIMPEZA DA VERSÃO ANTIGA
+# 3. LIMPEZA E DOWNLOAD
 # -----------------------------------------------------------------------------
-# Detecta o diretório de destino (Documentos ou Documents)
+# Detecta o diretório de destino
 if [ -d "$HOME/Documentos" ]; then
     DEST_DIR="$HOME/Documentos"
 else
@@ -102,45 +60,28 @@ else
 fi
 mkdir -p "$DEST_DIR"
 
-ZABBIX_PROJECT_PATH="$DEST_DIR/instalador-client-zabbix"
-BOX_SCRIPT_PROJECT_PATH="$DEST_DIR/box-script"
+echo "🧹 Limpando instalações antigas para garantir uma instalação limpa..."
+rm -rf "$DEST_DIR/instalador-client-zabbix"
+rm -rf "$DEST_DIR/box-script"
 
-echo "🧹 Limpando instalações antigas (se existirem)..."
-if [ -d "$ZABBIX_PROJECT_PATH" ]; then
-    rm -rf "$ZABBIX_PROJECT_PATH"
-    echo "   -> Removido: $ZABBIX_PROJECT_PATH"
-fi
-if [ -d "$BOX_SCRIPT_PROJECT_PATH" ]; then
-    rm -rf "$BOX_SCRIPT_PROJECT_PATH"
-    echo "   -> Removido: $BOX_SCRIPT_PROJECT_PATH"
-fi
-
-# Repositório: Box Script
-echo "⏬ Verificando/Baixando 'box-script'..."
-if [ ! -d "box-script" ]; then
-    git clone https://github.com/InnovatioLab/box-script.git
-    echo "API_KEY=Qw8!pZr2@tLx7sVb6kJm9^eHf4&uYc1" > "$DEST_DIR/box-script/.env"
-    echo "✅ Arquivo .env criado em 'box-script' com API_KEY."
-else
-    echo "👍 Repositório 'box-script' já existe."
-    echo "API_KEY=Qw8!pZr2@tLx7sVb6kJm9^eHf4&uYc1" > "$DEST_DIR/box-script/.env"
-    echo "✅ Arquivo .env atualizado em 'box-script' com API_KEY."
-fi
-
-# 4. DOWNLOAD E CONFIGURAÇÃO
-# -----------------------------------------------------------------------------
 echo "📂 Projetos serão baixados em '$DEST_DIR'."
 cd "$DEST_DIR"
 
 echo "⏬ Baixando 'instalador-client-zabbix'..."
 git clone https://github.com/InnovatioLab/instalador-client-zabbix.git
 
-ZABBIX_SCRIPT_PATH="$ZABBIX_PROJECT_PATH/zabbix_manager_ubuntu.sh"
+echo "⏬ Baixando 'box-script' e criando .env..."
+git clone https://github.com/InnovatioLab/box-script.git
+echo "API_KEY=Qw8!pZr2@tLx7sVb6kJm9^eHf4&uYc1" > "$DEST_DIR/box-script/.env"
+echo "✅ Arquivo .env criado em 'box-script'."
 
-echo "🔒 Concedendo permissão de execução para o script do Zabbix..."
+# 4. EXECUÇÃO DO INSTALADOR ZABBIX
+# -----------------------------------------------------------------------------
+ZABBIX_SCRIPT_PATH="$DEST_DIR/instalador-client-zabbix/zabbix_manager_ubuntu.sh"
+
+echo "🔒 Configurando e executando o script do Zabbix..."
 if [ -f "$ZABBIX_SCRIPT_PATH" ]; then
     chmod +x "$ZABBIX_SCRIPT_PATH"
-    echo "▶️  Executando o script do Zabbix Manager..."
     sudo "$ZABBIX_SCRIPT_PATH"
 else
     echo "❌ ERRO: O script do Zabbix não foi encontrado em '$ZABBIX_SCRIPT_PATH'."
@@ -153,4 +94,3 @@ echo "💾 Salvando a versão da instalação atual ($CURRENT_VERSION)..."
 echo "$CURRENT_VERSION" > "$VERSION_FILE"
 
 echo "🎉🎉🎉 Instalação/Atualização para a versão $CURRENT_VERSION concluída com sucesso! 🎉🎉🎉"
-echo "Você pode encontrar os projetos em '$DEST_DIR'."
