@@ -4,7 +4,7 @@
 # Script para configurar ambiente, com controle de versão. (VERSÃO 5)
 # 1. Verifica a versão instalada antes de executar.
 # 2. Limpa versões antigas antes de baixar as novas.
-# 3. Instala Docker (versão oficial), Docker Compose plugin, Python, Node.js (LTS), npm, Git e dependências do Electron.
+# 3. Instala Docker (versão oficial), Docker Compose plugin.
 # 4. Detecta a pasta 'Documentos' ou 'Documents'.
 # 5. Clona os repositórios 'instalador-client-zabbix' e 'box-script' para dentro da pasta de documentos.
 # 6. Cria/atualiza o .env do box-script.
@@ -49,46 +49,6 @@ sudo apt-get update -y > /dev/null
 # Docker e Docker Compose plugin
 echo "Instalando Docker e Docker Compose plugin..."
 sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
-
-# Python, Git
-echo "Instalando Python e Git..."
-sudo apt-get install -y python3 python3-pip git
-
-# Node.js (LTS) e npm
-echo "Instalando Node.js (LTS) e npm..."
-sudo apt-get install -y nodejs
-
-# Dependências do Electron (as do Dockerfile)
-echo "Instalando dependências do Electron..."
-sudo apt-get install -y \
-    libx11-xcb1 \
-    libxcb-dri3-0 \
-    libxtst6 \
-    libnss3 \
-    libatk-bridge2.0-0 \
-    libgtk-3-0 \
-    libxss1 \
-    libasound2 \
-    libdrm2 \
-    libgbm1 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxrandr2 \
-    libxkbcommon0 \
-    libx11-6 \
-    libxcb1 \
-    libxext6 \
-    libxfixes3 \
-    libxi6 \
-    libgdk-pixbuf2.0-0 \
-    libpango-1.0-0 \
-    libpangocairo-1.0-0 \
-    libcups2 \
-    libatk1.0-0 \
-    libcurl4 \
-    libgl1-mesa-glx \
-    libcanberra-gtk-module \
-    x11-apps
 
 echo "✅ Dependências instaladas com sucesso!"
 
