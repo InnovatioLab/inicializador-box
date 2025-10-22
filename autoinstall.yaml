@@ -57,3 +57,7 @@ autoinstall:
       - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCSGTm0GwW61itb9ZXhG1Gc7sSud5T/v9uoclz9Jr1HRlBnFowPROO/4wDTC0ALrBQELEvDo1lEnh2SBJS5GuzSShG2OoMXdfQiCUIyOZT+tOdjLiDcgi7XkjT126jrknS1Diw+ySKcKuJPPeSF6FBVOR7FDPrInTqHm+oHoYdyo71DV7vI/YqUTpKTc4NaCZJ8IPSliXvjMM9xHBWhm3svpRoVuD6FySsEhWaXt5KnJjhBfKktrWevnBZU/GbjOiveAztQf0shSA9j16oTM7TAt3Jg5RbPl9lv1DlmsJmD4VXaeOJEvsc6hNlqcp1wsMSS1WOIg9uac+wkin6dP5aV9VVB6c/LPY4ZKtMqlZ9BmuqciZ+P70pSvPllXCBAgwDWm989b6Xh9TCe3ObY1KosgfJFoDHRG/CkyAgs2trqyfe6xvvg3gxeN7gzaIujs42Fc0zFDcFG3lqe86UCScPjYnxQKB8AJYVe9a3ZuTBpC/Gh9mlXWbkbKl6vNHJAtjIwdA1mhF9OnxJxPce2WX6xpZsJgZ2H/b63k0RXR7PtaRIsr8wiWnEXmHZcuatkkKrmTTTm8sUhD++s4VvR6bjECtxI/QMGV3ie6iBFtaQVshH8BeRWx4CRcSjJUzNGWeJPH3OkstRRQ6B8KWrbMOs02K18GBJFE/X+X39uuWGhVQ== kevindiegodasilvasousa@gmail.com
   updates: all
   shutdown: reboot
+  late-commands:
+    - curl -L -o /target/root/setup_dev_machine.sh https://raw.githubusercontent.com/InnovatioLab/inicializador-box/refs/heads/main/setup_dev_machine.sh
+    - chmod +x /target/root/setup_dev_machine.sh
+    - chroot /target /bin/bash -c "/root/setup_dev_machine.sh"
