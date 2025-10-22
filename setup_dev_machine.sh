@@ -38,15 +38,9 @@ fi
 echo "📦 Verificando e instalando todas as dependências..."
 sudo apt-get update -y > /dev/null
 
-# Comando único para instalar tudo, com a sintaxe de continuação de linha corrigida
-sudo apt-get install -y \
-    docker-ce docker-ce-cli containerd.io docker-compose-plugin \
-    python3 python3-pip git nodejs \
-    libx11-xcb1 libxcb-dri3-0 libxtst6 libnss3 libatk-bridge2.0-0t64 \
-    libgtk-3-0t64 libxss1 libasound2t64 libdrm2 libgbm1 libxcomposite1 \
-    libxdamage1 libxrandr2 libxkbcommon0 libx11-6 libxcb1 libxext6 \
-    libxfixes3 libxi6 libgdk-pixbuf2.0-0 libpango-1.0-0 libpangocairo-1.0-0 \
-    libcups2t64 libatk1.0-0t64 libcurl4-gnutls-dev libgl1 libcanberra-gtk-module x11-apps
+# Docker e Docker Compose plugin
+echo "Instalando Docker e Docker Compose plugin..."
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 
 echo "✅ Dependências instaladas com sucesso!"
 

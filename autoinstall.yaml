@@ -1,0 +1,59 @@
+#cloud-config
+autoinstall:
+  version: 1
+  identity:
+    realname: "José Santos"
+    hostname: ubuntu-desktop
+    username: telas
+    password: "$y$j9T$OhqrINdty2I6i4C6p6Mxc.$voXUZ4zGpvnMFggMVHWkoP3hwu1w94oQPyt7DisUxp0"
+  locale: en_US.UTF-8
+  keyboard:
+    layout: us
+  timezone: "America/New_York"
+  packages:
+    - gimp
+    - git
+    - wget
+    - teamviewer
+    - python3
+    - python3-pip
+    - nodejs
+    - libx11-xcb1
+    - libxcb-dri3-0
+    - libxtst6
+    - libnss3
+    - libatk-bridge2.0-0
+    - libgtk-3-0
+    - libxss1
+    - libasound2
+    - libdrm2
+    - libgbm1
+    - libxcomposite1
+    - libxdamage1
+    - libxrandr2
+    - libxkbcommon0
+    - libx11-6
+    - libxcb1
+    - libxext6
+    - libxfixes3
+    - libxi6
+    - libgdk-pixbuf2.0-0
+    - libpango-1.0-0
+    - libpangocairo-1.0-0
+    - libcups2
+    - libatk1.0-0
+    - libcurl4
+    - libgl1-mesa-glx
+    - libcanberra-gtk-module
+    - x11-apps
+  codecs:
+    install: true
+  drivers:
+    install: true
+  ssh:
+    install-server: true
+    authorized-keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBPoeRr1TEfBSiZTjZoWIRvFh/k6e+zJmov2uO5R61M4 victoremmanuelmn@gmail.com
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCSGTm0GwW61itb9ZXhG1Gc7sSud5T/v9uoclz9Jr1HRlBnFowPROO/4wDTC0ALrBQELEvDo1lEnh2SBJS5GuzSShG2OoMXdfQiCUIyOZT+tOdjLiDcgi7XkjT126jrknS1Diw+ySKcKuJPPeSF6FBVOR7FDPrInTqHm+oHoYdyo71DV7vI/YqUTpKTc4NaCZJ8IPSliXvjMM9xHBWhm3svpRoVuD6FySsEhWaXt5KnJjhBfKktrWevnBZU/GbjOiveAztQf0shSA9j16oTM7TAt3Jg5RbPl9lv1DlmsJmD4VXaeOJEvsc6hNlqcp1wsMSS1WOIg9uac+wkin6dP5aV9VVB6c/LPY4ZKtMqlZ9BmuqciZ+P70pSvPllXCBAgwDWm989b6Xh9TCe3ObY1KosgfJFoDHRG/CkyAgs2trqyfe6xvvg3gxeN7gzaIujs42Fc0zFDcFG3lqe86UCScPjYnxQKB8AJYVe9a3ZuTBpC/Gh9mlXWbkbKl6vNHJAtjIwdA1mhF9OnxJxPce2WX6xpZsJgZ2H/b63k0RXR7PtaRIsr8wiWnEXmHZcuatkkKrmTTTm8sUhD++s4VvR6bjECtxI/QMGV3ie6iBFtaQVshH8BeRWx4CRcSjJUzNGWeJPH3OkstRRQ6B8KWrbMOs02K18GBJFE/X+X39uuWGhVQ== kevindiegodasilvasousa@gmail.com
+  updates: all
+  shutdown: reboot
