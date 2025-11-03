@@ -61,3 +61,23 @@ autoinstall:
     - curl -L -o /target/root/setup_dev_machine.sh https://raw.githubusercontent.com/InnovatioLab/inicializador-box/refs/heads/main/setup_dev_machine.sh
     - chmod +x /target/root/setup_dev_machine.sh
     - chroot /target /bin/bash -c "/root/setup_dev_machine.sh"
+    # Download the graphical-session helper script into the target system
+    - curl -L -o /target/usr/local/bin/xhost-setup.sh https://raw.githubusercontent.com/InnovatioLab/inicializador-box/refs/heads/main/setup_graphic_session.sh
+    - chmod +x /target/usr/local/bin/xhost-setup.sh
+    # Install a systemd oneshot unit that runs the helper once after the graphical target
+    - |
+      chroot /target /bin/bash -c 'cat > /etc/systemd/system/xhost-setup.service << "EOF"
+      [Unit]
+      Description=Run xhost commands when X is available
+      After=graphical.target
+      Wants=graphical.target
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/bin/xhost-setup.sh
+
+      [Install]
+      WantedBy=graphical.target
+      EOF'
+    - chroot /target /bin/bash -c 'chmod 644 /etc/systemd/system/xhost-setup.service'
+    - chroot /target /bin/bash -c 'systemctl enable xhost-setup.service || true'
