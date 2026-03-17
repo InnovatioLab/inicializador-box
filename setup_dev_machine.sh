@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ---
-# Script para configurar ambiente - VERSÃO 7.1 (Otimizada para Autoinstall)
+# Script para configurar ambiente - VERSÃO 7.2 (Compatível Ubuntu 22/24)
 # ---
 
 set -e
@@ -38,46 +38,65 @@ else
 fi
 
 # 2. INSTALAÇÃO DE DEPENDÊNCIAS
-echo "📦 Instalando dependências e TeamViewer..."
+echo "📦 Instalando dependências..."
+
 apt-get update -y
-# Instalando docker.io (mais estável para scripts simples de autoinstall)
-apt-get install -y docker.io docker-compose docker-compose-plugin
 
-# TeamViewer
+apt-get install -y \
+docker.io \
+docker-compose \
+git \
+wget \
+curl
+
+# Garantindo que o docker esteja ativo
+systemctl enable docker
+systemctl start docker
+
+# 3. TEAMVIEWER
+echo "📦 Instalando TeamViewer..."
+
 wget https://download.teamviewer.com/download/linux/teamviewer_amd64.deb -P /tmp
-apt-get install -y /tmp/teamviewer_amd64.deb
-rm /tmp/teamviewer_amd64.deb
 
-# 3. DOWNLOAD E PROJETOS
-# Garantindo que a pasta Documentos exista para o usuário correto
+apt-get install -y /tmp/teamviewer_amd64.deb || apt-get -f install -y
+
+rm -f /tmp/teamviewer_amd64.deb
+
+# 4. DOWNLOAD E PROJETOS
 DEST_DIR="$USER_HOME/Documentos"
+
 mkdir -p "$DEST_DIR"
 
 echo "🧹 Limpando e baixando projetos em $DEST_DIR..."
-rm -rf "$DEST_DIR/instalador-client-zabbix" "$DEST_DIR/box-script"
+
+rm -rf \
+"$DEST_DIR/instalador-client-zabbix" \
+"$DEST_DIR/box-script"
 
 cd "$DEST_DIR"
+
 git clone https://github.com/InnovatioLab/instalador-client-zabbix.git
 git clone https://github.com/InnovatioLab/box-script.git
 
 # Criando .env
 echo "API_KEY=Qw8!pZr2@tLx7sVb6kJm9^eHf4&uYc1" > "$DEST_DIR/box-script/.env"
 
-# 4. EXECUÇÃO DO ZABBIX
+# 5. EXECUÇÃO DO ZABBIX
 ZABBIX_SCRIPT_PATH="$DEST_DIR/instalador-client-zabbix/zabbix_manager_ubuntu.sh"
+
 if [ -f "$ZABBIX_SCRIPT_PATH" ]; then
     chmod +x "$ZABBIX_SCRIPT_PATH"
-    bash "$ZABBIX_SCRIPT_PATH" # Executa direto como root
+    bash "$ZABBIX_SCRIPT_PATH"
 else
     echo "⚠️ Aviso: Script Zabbix não encontrado."
 fi
 
-# 5. AJUSTE DE PERMISSÕES (Crucial!)
-# Como o script rodou como root, os arquivos pertencem ao root. 
-# Precisamos devolver ao usuário 'telas'.
+# 6. AJUSTE DE PERMISSÕES
+echo "🔐 Ajustando permissões..."
+
 chown -R $TARGET_USER:$TARGET_USER "$USER_HOME"
 
-# 6. SALVAR VERSÃO
+# 7. SALVAR VERSÃO
 echo "$CURRENT_VERSION" > "$VERSION_FILE"
 chown $TARGET_USER:$TARGET_USER "$VERSION_FILE"
 
