@@ -37,21 +37,28 @@ else
     echo "ℹ️  Nenhuma versão encontrada. Iniciando nova instalação..."
 fi
 
-# 2. INSTALAÇÃO DE DEPENDÊNCIAS
+# 2. INSTALAÇÃO DE DEPENDÊNCIAS E DOCKER (repositório oficial)
 echo "📦 Instalando dependências..."
 
 apt-get update -y
+apt-get install -y ca-certificates curl gnupg git wget
 
-apt-get install -y \
-docker.io \
-docker-compose \
-git \
-wget \
-curl
+# Repositório oficial do Docker (versões mais recentes)
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+chmod a+r /etc/apt/keyrings/docker.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+apt-get update -y
+apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
 # Garantindo que o docker esteja ativo
 systemctl enable docker
 systemctl start docker
+
+# Permissão para root e usuário telas usarem docker sem sudo
+usermod -aG docker "$TARGET_USER"
+# Nota: o usuário telas precisa fazer logout/login (ou nova sessão) para o grupo docker valer
 
 # 3. TEAMVIEWER
 echo "📦 Instalando TeamViewer..."
@@ -101,3 +108,4 @@ echo "$CURRENT_VERSION" > "$VERSION_FILE"
 chown $TARGET_USER:$TARGET_USER "$VERSION_FILE"
 
 echo "🎉 Instalação concluída com sucesso!"
+echo "ℹ️  Para o usuário '$TARGET_USER' usar docker sem sudo, faça logout e login (ou abra uma nova sessão)."
