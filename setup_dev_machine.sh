@@ -1,111 +1,127 @@
 #!/bin/bash
 
-# ---
-# Script para configurar ambiente - VERSÃO 7.2 (Compatível Ubuntu 22/24)
-# ---
+set -euo pipefail
 
-set -e
-
-# --- CONFIGURAÇÃO ---
-CURRENT_VERSION="1.0.2"
+CURRENT_VERSION="2.0.0"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VERSION_FILE="/etc/box/version"
+BOX_CONFIG_FILE="/etc/box/box.env"
 TARGET_USER="telas"
-USER_HOME="/home/$TARGET_USER"
-VERSION_FILE="$USER_HOME/.box_installer_version"
+DEFAULT_GITHUB_TOKEN="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"
+DEFAULT_BOX_API_KEY="Qw8!pZr2@tLx7sVb6kJm9^eHf4&uYc1"
+DEFAULT_BOX_API_BASE_URL="https://api.telas-ads.com/api/"
+DEFAULT_BOX_PORT="8081"
+DEFAULT_BOX_ID="box-001"
+DEFAULT_ZABBIX_SERVER="100.111.249.88"
+DEFAULT_DISPLAY_VALUE=":0"
 
-# Verifica root
-if [ "$EUID" -ne 0 ]; then 
-  echo "Por favor, rode como root (ex: sudo ./setup_dev_machine.sh)"
-  exit 1
-fi
+write_default_box_config() {
+  cat > "$BOX_CONFIG_FILE" <<EOF
+TARGET_USER=$TARGET_USER
+ENABLE_AUTOLOGIN=true
 
-echo "🚀 Iniciando o instalador do Box (Versão: $CURRENT_VERSION)..."
+GITHUB_TOKEN=$DEFAULT_GITHUB_TOKEN
 
-# 1. VERIFICAÇÃO DE VERSÃO
-INSTALLED_VERSION=""
-if [ -f "$VERSION_FILE" ]; then
-    INSTALLED_VERSION=$(cat "$VERSION_FILE")
-fi
+PLAYER_REPO_SLUG=InnovatioLab/box-script-v2
+PLAYER_REPO_BRANCH=main
+ZABBIX_REPO_SLUG=InnovatioLab/instalador-client-zabbix
+ZABBIX_REPO_BRANCH=main
 
-if [ "$INSTALLED_VERSION" == "$CURRENT_VERSION" ]; then
-    echo "✅ Você já possui a versão mais recente ($CURRENT_VERSION). Nenhuma ação necessária."
-    exit 0
-fi
+BOX_API_KEY=$DEFAULT_BOX_API_KEY
+BOX_API_BASE_URL=$DEFAULT_BOX_API_BASE_URL
+BOX_PORT=$DEFAULT_BOX_PORT
+BOX_ID=$DEFAULT_BOX_ID
 
-if [ -n "$INSTALLED_VERSION" ]; then
-    echo "ℹ️  Versão desatualizada encontrada ($INSTALLED_VERSION). Atualizando para a $CURRENT_VERSION..."
-else
-    echo "ℹ️  Nenhuma versão encontrada. Iniciando nova instalação..."
-fi
+INSTALL_TAILSCALE=true
+TAILSCALE_AUTH_KEY=
 
-# 2. INSTALAÇÃO DE DEPENDÊNCIAS E DOCKER (repositório oficial)
-echo "📦 Instalando dependências..."
+INSTALL_ZABBIX=true
+ZABBIX_SERVER=$DEFAULT_ZABBIX_SERVER
+ZABBIX_HOST=
 
-apt-get update -y
-apt-get install -y ca-certificates curl gnupg git wget
+DISPLAY_VALUE=$DEFAULT_DISPLAY_VALUE
+EOF
 
-# Repositório oficial do Docker (versões mais recentes)
-install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-chmod a+r /etc/apt/keyrings/docker.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+  chmod 0640 "$BOX_CONFIG_FILE"
+}
 
-apt-get update -y
-apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+write_pending_instructions() {
+  local note_path="/etc/box/README-BOOTSTRAP.txt"
+  cat > "$note_path" <<EOF
+O bootstrap automatico da box foi preparado e o arquivo principal de configuracao foi criado.
 
-# Garantindo que o docker esteja ativo
-systemctl enable docker
-systemctl start docker
+1. Edite o arquivo:
+   $BOX_CONFIG_FILE
 
-# Permissão para root e usuário telas usarem docker sem sudo
-usermod -aG docker "$TARGET_USER"
-# Nota: o usuário telas precisa fazer logout/login (ou nova sessão) para o grupo docker valer
+2. Revise principalmente:
+   - GITHUB_TOKEN
+   - BOX_API_KEY
+   - BOX_ID
+   - ZABBIX_SERVER
 
-# 3. TEAMVIEWER
-echo "📦 Instalando TeamViewer..."
+3. Se usar Tailscale, preencha tambem:
+   - TAILSCALE_AUTH_KEY
 
-wget https://download.teamviewer.com/download/linux/teamviewer_amd64.deb -P /tmp
+4. O ZABBIX_HOST sera preenchido automaticamente com o IP do Tailscale, quando disponivel.
 
-apt-get install -y /tmp/teamviewer_amd64.deb || apt-get -f install -y
+5. Finalize o provisionamento com:
+   sudo /root/inicializador-box/setup_dev_machine.sh
 
-rm -f /tmp/teamviewer_amd64.deb
+6. Para validar o player depois:
+   systemctl status box-player.service
+   docker ps
 
-# 4. DOWNLOAD E PROJETOS
-DEST_DIR="$USER_HOME/Documentos"
+Observacao: a configuracao da BIOS para religar apos queda de energia continua manual.
+EOF
 
-mkdir -p "$DEST_DIR"
+  chmod 0644 "$note_path"
 
-echo "🧹 Limpando e baixando projetos em $DEST_DIR..."
+  if id "$TARGET_USER" >/dev/null 2>&1; then
+    install -d -m 0755 "/home/$TARGET_USER/Desktop"
+    cp "$note_path" "/home/$TARGET_USER/Desktop/README-BOOTSTRAP.txt"
+    chown "$TARGET_USER:$TARGET_USER" "/home/$TARGET_USER/Desktop/README-BOOTSTRAP.txt"
+  fi
+}
 
-rm -rf \
-"$DEST_DIR/instalador-client-zabbix" \
-"$DEST_DIR/box-script"
+run_step() {
+  local label="$1"
+  local script_path="$2"
 
-cd "$DEST_DIR"
+  chmod +x "$script_path"
+  echo
+  echo "==> $label"
+  bash "$script_path"
+}
 
-git clone https://github.com/InnovatioLab/instalador-client-zabbix.git
-git clone https://github.com/InnovatioLab/box-script.git
+main() {
+  if [ "${EUID:-$(id -u)}" -ne 0 ]; then
+    echo "Por favor, rode como root (ex: sudo ./setup_dev_machine.sh)"
+    exit 1
+  fi
 
-# Criando .env
-echo "API_KEY=Qw8!pZr2@tLx7sVb6kJm9^eHf4&uYc1" > "$DEST_DIR/box-script/.env"
+  echo "Iniciando o bootstrap da box (versão $CURRENT_VERSION)"
 
-# 5. EXECUÇÃO DO ZABBIX
-ZABBIX_SCRIPT_PATH="$DEST_DIR/instalador-client-zabbix/zabbix_manager_ubuntu.sh"
+  install -d -m 0750 /etc/box
+  if [ ! -f "$BOX_CONFIG_FILE" ]; then
+    write_default_box_config
+    write_pending_instructions
+    echo "Arquivo de configuração criado automaticamente em $BOX_CONFIG_FILE"
+    echo "Continuando o bootstrap com os valores configurados."
+  fi
 
-if [ -f "$ZABBIX_SCRIPT_PATH" ]; then
-    chmod +x "$ZABBIX_SCRIPT_PATH"
-    bash "$ZABBIX_SCRIPT_PATH"
-else
-    echo "⚠️ Aviso: Script Zabbix não encontrado."
-fi
+  run_step "Bootstrap do host" "$SCRIPT_DIR/scripts/bootstrap_host.sh"
+  run_step "Observabilidade" "$SCRIPT_DIR/scripts/install_observability.sh"
+  run_step "Matrícula da box" "$SCRIPT_DIR/scripts/enroll_box.sh"
+  run_step "Instalação do player" "$SCRIPT_DIR/scripts/install_player.sh"
 
-# 6. AJUSTE DE PERMISSÕES
-echo "🔐 Ajustando permissões..."
+  printf '%s\n' "$CURRENT_VERSION" > "$VERSION_FILE"
+  chmod 0644 "$VERSION_FILE"
+  touch /etc/box/bootstrap.complete
+  systemctl disable box-firstboot.service >/dev/null 2>&1 || true
 
-chown -R $TARGET_USER:$TARGET_USER "$USER_HOME"
+  echo
+  echo "Bootstrap concluído com sucesso."
+  echo "Se este for o primeiro provisionamento, reinicie a máquina para validar autologin, Docker e box-player.service."
+}
 
-# 7. SALVAR VERSÃO
-echo "$CURRENT_VERSION" > "$VERSION_FILE"
-chown $TARGET_USER:$TARGET_USER "$VERSION_FILE"
-
-echo "🎉 Instalação concluída com sucesso!"
-echo "ℹ️  Para o usuário '$TARGET_USER' usar docker sem sudo, faça logout e login (ou abra uma nova sessão)."
+main "$@"

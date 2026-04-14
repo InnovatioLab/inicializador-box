@@ -11,40 +11,12 @@ autoinstall:
     layout: us
   timezone: "America/New_York"
   packages:
-    - gimp
+    - ca-certificates
+    - curl
     - git
+    - gnupg
+    - jq
     - wget
-    - python3
-    - python3-pip
-    - nodejs
-    - libx11-xcb1
-    - libxcb-dri3-0
-    - libxtst6
-    - libnss3
-    - libatk-bridge2.0-0
-    - libgtk-3-0
-    - libxss1
-    - libasound2
-    - libdrm2
-    - libgbm1
-    - libxcomposite1
-    - libxdamage1
-    - libxrandr2
-    - libxkbcommon0
-    - libx11-6
-    - libxcb1
-    - libxext6
-    - libxfixes3
-    - libxi6
-    - libgdk-pixbuf2.0-0
-    - libpango-1.0-0
-    - libpangocairo-1.0-0
-    - libcups2
-    - libatk1.0-0
-    - libcurl4
-    - libgl1-mesa-glx
-    - libcanberra-gtk-module
-    - x11-apps
   codecs:
     install: true
   drivers:
@@ -57,26 +29,25 @@ autoinstall:
   updates: all
   shutdown: reboot
   late-commands:
-    - curl -L -o /target/root/setup_dev_machine.sh https://raw.githubusercontent.com/InnovatioLab/inicializador-box/refs/heads/main/setup_dev_machine.sh
-    - chmod +x /target/root/setup_dev_machine.sh
-    - chroot /target /bin/bash -c "/root/setup_dev_machine.sh"
-    # Download the graphical-session helper script into the target system
-    - curl -L -o /target/usr/local/bin/xhost-setup.sh https://raw.githubusercontent.com/InnovatioLab/inicializador-box/refs/heads/main/setup_graphic_session.sh
-    - chmod +x /target/usr/local/bin/xhost-setup.sh
-    # Install a systemd oneshot unit that runs the helper once after the graphical target
     - |
-      chroot /target /bin/bash -c 'cat > /etc/systemd/system/xhost-setup.service << "EOF"
+      mkdir -p /target/root/inicializador-box
+      chroot /target /bin/bash -c 'cd /root && rm -rf inicializador-box && mkdir -p inicializador-box && curl -fsSL "https://github.com/InnovatioLab/inicializador-box/archive/refs/heads/main.tar.gz" | tar -xz --strip-components=1 -C /root/inicializador-box'
+    - |
+      chroot /target /bin/bash -c 'cat > /etc/systemd/system/box-firstboot.service << "EOF"
       [Unit]
-      Description=Run xhost commands when X is available
-      After=graphical.target
-      Wants=graphical.target
+      Description=Run box bootstrap on first boot
+      ConditionPathExists=/root/inicializador-box/setup_dev_machine.sh
+      ConditionPathExists=!/etc/box/bootstrap.complete
+      After=network-online.target
+      Wants=network-online.target
 
       [Service]
       Type=oneshot
-      ExecStart=/usr/local/bin/xhost-setup.sh
+      ExecStart=/bin/bash /root/inicializador-box/setup_dev_machine.sh
+      RemainAfterExit=yes
 
       [Install]
-      WantedBy=graphical.target
+      WantedBy=multi-user.target
       EOF'
-    - chroot /target /bin/bash -c 'chmod 644 /etc/systemd/system/xhost-setup.service'
-    - chroot /target /bin/bash -c 'systemctl enable xhost-setup.service || true'
+    - chroot /target /bin/bash -c 'chmod 644 /etc/systemd/system/box-firstboot.service'
+    - chroot /target /bin/bash -c 'systemctl enable box-firstboot.service || true'
