@@ -124,7 +124,7 @@ if [ -e "$SOCKET_PATH" ]; then
   export DISPLAY="$DISPLAY_ADDR"
   if command -v xhost >/dev/null 2>&1; then
     # Run commands as the graphical user to avoid authorization issues
-    su -l "$GRAPHICAL_USER" -c "DISPLAY=$DISPLAY xhost +local:docker || true; DISPLAY=$DISPLAY xhost +SI:electronuser:electronuser || true"
+    su -l "$GRAPHICAL_USER" -c "DISPLAY=$DISPLAY xhost +local:docker || true; DISPLAY=$DISPLAY xhost +SI:localuser:root || true"
     log "xhost commands executed"
   else
     log "xhost not installed on system; skipping"
