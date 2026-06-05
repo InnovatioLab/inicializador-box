@@ -6,6 +6,20 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=./common.sh
 . "$SCRIPT_DIR/common.sh"
 
+install_anydesk() {
+  if command_exists anydesk; then
+    log "AnyDesk já instalado, pulando"
+    return 0
+  fi
+
+  log "Instalando AnyDesk"
+  curl -fsSL https://keys.anydesk.com/repos/DEB-GPG-KEY | gpg --dearmor -o /etc/apt/keyrings/anydesk.gpg
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/anydesk.gpg] http://deb.anydesk.com/ all main" \
+    > /etc/apt/sources.list.d/anydesk-stable.list
+  apt-get update -y
+  apt-get install -y anydesk
+}
+
 configure_autologin() {
   if [ "${ENABLE_AUTOLOGIN:-true}" != "true" ]; then
     log "Autologin desabilitado por configuração"
@@ -53,6 +67,7 @@ main() {
   install -d -m 0755 "$TARGET_HOME/Documentos"
   chown -R "$TARGET_USER:$TARGET_USER" "$TARGET_HOME"
 
+  install_anydesk
   configure_autologin
 
   log "Bootstrap do host concluído"

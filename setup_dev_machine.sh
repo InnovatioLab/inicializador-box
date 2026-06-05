@@ -12,7 +12,6 @@ DEFAULT_BOX_API_KEY="Qw8!pZr2@tLx7sVb6kJm9^eHf4&uYc1"
 DEFAULT_BOX_API_BASE_URL="https://api.telas-ads.com/api/"
 DEFAULT_BOX_PORT="8081"
 DEFAULT_BOX_ID="box-001"
-DEFAULT_ZABBIX_SERVER="100.111.249.88"
 DEFAULT_DISPLAY_VALUE=":0"
 
 write_default_box_config() {
@@ -24,8 +23,6 @@ GITHUB_TOKEN=$DEFAULT_GITHUB_TOKEN
 
 PLAYER_REPO_SLUG=InnovatioLab/box-script-v2
 PLAYER_REPO_BRANCH=main
-ZABBIX_REPO_SLUG=InnovatioLab/instalador-client-zabbix
-ZABBIX_REPO_BRANCH=main
 
 BOX_API_KEY=$DEFAULT_BOX_API_KEY
 BOX_API_BASE_URL=$DEFAULT_BOX_API_BASE_URL
@@ -34,10 +31,6 @@ BOX_ID=$DEFAULT_BOX_ID
 
 INSTALL_TAILSCALE=true
 TAILSCALE_AUTH_KEY=
-
-INSTALL_ZABBIX=true
-ZABBIX_SERVER=$DEFAULT_ZABBIX_SERVER
-ZABBIX_HOST=
 
 DISPLAY_VALUE=$DEFAULT_DISPLAY_VALUE
 EOF
@@ -57,14 +50,11 @@ O bootstrap automatico da box foi preparado e o arquivo principal de configuraca
    - GITHUB_TOKEN
    - BOX_API_KEY
    - BOX_ID
-   - ZABBIX_SERVER
 
 3. Se usar Tailscale, preencha tambem:
    - TAILSCALE_AUTH_KEY
 
-4. O ZABBIX_HOST sera preenchido automaticamente com o IP do Tailscale, quando disponivel.
-
-5. Finalize o provisionamento com:
+4. Finalize o provisionamento com:
    sudo /root/inicializador-box/setup_dev_machine.sh
 
 6. Para validar o player depois:

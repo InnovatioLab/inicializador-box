@@ -8,8 +8,6 @@ TARGET_USER="${TARGET_USER:-telas}"
 TARGET_HOME="${TARGET_HOME:-/home/$TARGET_USER}"
 PLAYER_REPO_DIR="${PLAYER_REPO_DIR:-$TARGET_HOME/box-player}"
 PLAYER_REPO_SLUG="${PLAYER_REPO_SLUG:-InnovatioLab/box-script-v2}"
-ZABBIX_REPO_DIR="${ZABBIX_REPO_DIR:-$TARGET_HOME/instalador-client-zabbix}"
-ZABBIX_REPO_SLUG="${ZABBIX_REPO_SLUG:-InnovatioLab/instalador-client-zabbix}"
 
 log() {
   printf '[box-bootstrap] %s\n' "$*"
@@ -80,7 +78,7 @@ run_as_target_user() {
 
 install_apt_prerequisites() {
   apt-get update -y
-  apt-get install -y ca-certificates curl git gnupg jq lsb-release wget x11-xserver-utils
+  apt-get install -y ca-certificates curl git gnupg jq lsb-release wget x11-xserver-utils xdotool
 }
 
 ensure_docker_repo() {
@@ -129,16 +127,11 @@ ensure_shell_scripts_executable() {
 
 write_env_file_if_missing() {
   local env_path="$1"
-  local resolved_zabbix_host=""
-
-  resolved_zabbix_host="$(resolve_zabbix_host || true)"
 
   cat > "$env_path" <<EOF
 API_KEY=${BOX_API_KEY:-}
 PORT=${BOX_PORT:-8081}
 API_BASE_URL=${BOX_API_BASE_URL:-https://api.telas-ads.com/api/}
-ZABBIX_SERVER=${ZABBIX_SERVER:-100.111.249.88}
-ZABBIX_HOST=${resolved_zabbix_host}
 TAILSCALE_AUTH_KEY=${TAILSCALE_AUTH_KEY:-}
 DISPLAY=${DISPLAY_VALUE:-:0}
 EOF
@@ -151,26 +144,3 @@ command_exists() {
   command -v "$1" >/dev/null 2>&1
 }
 
-detect_tailscale_ipv4() {
-  if ! command_exists tailscale; then
-    return 1
-  fi
-
-  tailscale ip -4 2>/dev/null | tr -d '[:space:]'
-}
-
-resolve_zabbix_host() {
-  if [ -n "${ZABBIX_HOST:-}" ]; then
-    printf '%s' "$ZABBIX_HOST"
-    return 0
-  fi
-
-  local tailscale_ip=""
-  tailscale_ip="$(detect_tailscale_ipv4 || true)"
-  if [ -n "$tailscale_ip" ]; then
-    printf '%s' "$tailscale_ip"
-    return 0
-  fi
-
-  return 1
-}

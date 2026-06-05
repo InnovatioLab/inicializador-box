@@ -10,6 +10,51 @@ install_display_helper() {
   install -m 0755 "$SCRIPT_DIR/../setup_graphic_session.sh" /usr/local/bin/box-display-access.sh
 }
 
+install_gnome_autostart() {
+  local start_script="$TARGET_HOME/start-box.sh"
+  local autostart_dir="$TARGET_HOME/.config/autostart"
+  local desktop_file="$autostart_dir/box-script.desktop"
+  local display_val="${DISPLAY_VALUE:-:0}"
+
+  cat > "$start_script" <<EOF
+#!/bin/bash
+
+# Aguarda o GNOME estabilizar antes de iniciar
+sleep 15
+
+export DISPLAY=${display_val}
+export XAUTHORITY=$TARGET_HOME/.Xauthority
+
+# Fecha o overlay de Activities do GNOME, se estiver aberto
+xdotool key Escape
+
+# Permite que containers Docker acessem o servidor X11
+xhost +local:docker
+
+cd $PLAYER_REPO_DIR
+docker compose up -d
+EOF
+
+  chmod 0755 "$start_script"
+  chown "$TARGET_USER:$TARGET_USER" "$start_script"
+
+  install -d -m 0755 "$autostart_dir"
+  chown "$TARGET_USER:$TARGET_USER" "$autostart_dir"
+
+  cat > "$desktop_file" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Box Script
+Exec=$start_script
+X-GNOME-Autostart-enabled=true
+EOF
+
+  chown "$TARGET_USER:$TARGET_USER" "$desktop_file"
+  chmod 0644 "$desktop_file"
+
+  log "start-box.sh e autostart configurados para o usuário $TARGET_USER"
+}
+
 install_systemd_units() {
   cat > /etc/systemd/system/box-display-access.service <<EOF
 [Unit]
@@ -64,6 +109,7 @@ main() {
   ensure_shell_scripts_executable "$PLAYER_REPO_DIR"
   install_display_helper
   install_systemd_units
+  install_gnome_autostart
 
   systemctl start box-display-access.service || true
   systemctl restart box-player.service
