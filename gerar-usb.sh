@@ -12,7 +12,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-UBUNTU_ISO_NAME="ubuntu-24.04.4-live-server-amd64.iso"
+UBUNTU_ISO_NAME="ubuntu-24.04.4-desktop-amd64.iso"
 UBUNTU_ISO_URL="https://releases.ubuntu.com/24.04.4/${UBUNTU_ISO_NAME}"
 ISO_CACHE_DIR="${HOME}/.cache/telas-box-isos"
 WORK_DIR=""
