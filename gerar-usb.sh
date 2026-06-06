@@ -250,33 +250,67 @@ YAML
   log "user-data gerado."
 }
 
+OUTPUT_ISO=""
+
 repack_iso() {
-  local output_iso="$WORK_DIR/telas-${BOX_ID}.iso"
+  OUTPUT_ISO="$WORK_DIR/telas-${BOX_ID}.iso"
   log "Reempacotando ISO..."
+  log "Verificando arquivos de boot necessários..."
+
+  local iso_src="$WORK_DIR/iso_src"
+  local mbr_img="" efi_img="" eltorito_img=""
+
+  # Detecta paths dos arquivos de boot (variam entre versões do Ubuntu)
+  for f in \
+      "boot/grub/i386-pc/boot_hybrid.img" \
+      "boot/grub/bios.img" \
+      "isolinux/isohdpfx.bin"; do
+    if [ -f "$iso_src/$f" ]; then mbr_img="$iso_src/$f"; break; fi
+  done
+
+  for f in "boot/grub/efi.img" "EFI/efi.img" ".disk/boot/grub/efi.img"; do
+    if [ -f "$iso_src/$f" ]; then efi_img="$iso_src/$f"; break; fi
+  done
+
+  for f in "boot/grub/i386-pc/eltorito.img" "boot/grub/bios.img" "isolinux/isolinux.bin"; do
+    if [ -f "$iso_src/$f" ]; then eltorito_img="$iso_src/$f"; break; fi
+  done
+
+  if [ -z "$mbr_img" ] || [ -z "$efi_img" ]; then
+    log "Arquivos de boot encontrados:"
+    find "$iso_src/boot" -name "*.img" 2>/dev/null | head -20 >&2 || true
+    fail "Arquivos de boot não encontrados. Estrutura do ISO inesperada."
+  fi
+
+  local eltorito_rel="${eltorito_img#$iso_src/}"
+  log "MBR : $mbr_img"
+  log "EFI : $efi_img"
+  log "Boot: $eltorito_rel"
 
   xorriso -as mkisofs \
     -r \
     -V "TELAS-${BOX_ID}" \
-    -o "$output_iso" \
+    -o "$OUTPUT_ISO" \
     -J --joliet-long \
-    -b boot/grub/i386-pc/eltorito.img \
+    -b "$eltorito_rel" \
     -c boot.catalog \
     -no-emul-boot \
     -boot-load-size 4 \
     -boot-info-table \
     --grub2-boot-info \
-    --grub2-mbr "$WORK_DIR/iso_src/boot/grub/i386-pc/boot_hybrid.img" \
-    -append_partition 2 28732ac11ff8d211ba4b00a0c93ec93b \
-      "$WORK_DIR/iso_src/boot/grub/efi.img" \
+    --grub2-mbr "$mbr_img" \
+    -append_partition 2 28732ac11ff8d211ba4b00a0c93ec93b "$efi_img" \
     -appended_part_as_gpt \
     -eltorito-alt-boot \
     -e '--interval:appended_partition_2:::' \
     -no-emul-boot \
     -partition_offset 16 \
-    "$WORK_DIR/iso_src" \
-    2>/dev/null
+    "$iso_src" || fail "xorriso falhou ao reempacotar o ISO."
 
-  printf '%s' "$output_iso"
+  if [ ! -f "$OUTPUT_ISO" ]; then
+    fail "ISO não foi criado em $OUTPUT_ISO"
+  fi
+  log "ISO reempacotado: $OUTPUT_ISO"
 }
 
 write_to_usb() {
@@ -300,13 +334,13 @@ main() {
   WORK_DIR=$(mktemp -d /tmp/telas-usb.XXXXXX)
   trap cleanup EXIT
 
-  local iso_path output_iso
+  local iso_path
   iso_path=$(download_iso)
   extract_iso "$iso_path"
   patch_grub
   generate_user_data
-  output_iso=$(repack_iso)
-  write_to_usb "$output_iso"
+  repack_iso
+  write_to_usb "$OUTPUT_ISO"
 
   echo ""
   log "✓ USB pronto para BOX_ID=${BOX_ID}"
