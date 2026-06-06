@@ -63,8 +63,12 @@ check_deps() {
   for cmd in xorriso wget python3 lsblk; do
     command -v "$cmd" >/dev/null 2>&1 || missing+=("$cmd")
   done
-  [ ${#missing[@]} -gt 0 ] && \
-    fail "Dependências ausentes: ${missing[*]}. Instale: apt-get install ${missing[*]}"
+  if [ ${#missing[@]} -gt 0 ]; then
+    fail "Dependências ausentes: ${missing[*]}.
+  Ubuntu/Debian : sudo apt-get install ${missing[*]}
+  NixOS         : nix-env -iA $(printf 'nixpkgs.%s ' "${missing[@]}")
+  NixOS (sudo)  : sudo env PATH=\"\$PATH\" ./gerar-usb.sh ..."
+  fi
 }
 
 confirm_device() {
