@@ -40,7 +40,7 @@ EOF
 }
 
 parse_args() {
-  [ $# -eq 0 ] && usage
+  if [ $# -eq 0 ]; then usage; fi
   while [ $# -gt 0 ]; do
     case "$1" in
       --box-id)        BOX_ID="$2";        shift 2 ;;
@@ -50,12 +50,14 @@ parse_args() {
       *) fail "Argumento desconhecido: $1" ;;
     esac
   done
-  [ -z "$BOX_ID" ]  && fail "--box-id é obrigatório"
-  [ -z "$DEVICE" ]  && fail "--device é obrigatório"
+  if [ -z "$BOX_ID" ]; then fail "--box-id é obrigatório"; fi
+  if [ -z "$DEVICE" ]; then fail "--device é obrigatório"; fi
 }
 
 check_root() {
-  [ "${EUID:-$(id -u)}" -ne 0 ] && fail "Execute como root: sudo $0 $*"
+  if [ "${EUID:-$(id -u)}" -ne 0 ]; then
+    fail "Execute como root: sudo $0 $*"
+  fi
 }
 
 check_deps() {
