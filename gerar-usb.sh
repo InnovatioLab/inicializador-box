@@ -23,8 +23,8 @@ TAILSCALE_KEY=""
 ISO_PATH_OVERRIDE=""
 
 # ---------------------------------------------------------------------------
-log()  { printf '\033[1;36m[gerar-usb]\033[0m %s\n' "$*"; }
-warn() { printf '\033[1;33m[gerar-usb] AVISO:\033[0m %s\n' "$*"; }
+log()  { printf '\033[1;36m[gerar-usb]\033[0m %s\n' "$*" >&2; }
+warn() { printf '\033[1;33m[gerar-usb] AVISO:\033[0m %s\n' "$*" >&2; }
 fail() { printf '\033[1;31m[gerar-usb] ERRO:\033[0m %s\n' "$*" >&2; exit 1; }
 
 usage() {
@@ -64,17 +64,16 @@ check_root() {
   fi
 }
 
-check_deps() {
-  local missing=()
-  for cmd in xorriso wget python3 lsblk 7z; do
-    command -v "$cmd" >/dev/null 2>&1 || missing+=("$cmd")
-  done
-  if [ ${#missing[@]} -gt 0 ]; then
-    local pkgs="${missing[*]}"
-    pkgs="${pkgs//7z/p7zip-full}"
-    fail "Dependências ausentes: ${missing[*]}.
-  Ubuntu/Debian : sudo apt-get install ${pkgs}
-  NixOS         : nix-env -iA nixpkgs.xorriso nixpkgs.wget nixpkgs.p7zip"
+ensure_deps() {
+  local to_install=()
+  command -v xorriso >/dev/null 2>&1 || to_install+=(xorriso)
+  command -v wget    >/dev/null 2>&1 || to_install+=(wget)
+  command -v python3 >/dev/null 2>&1 || to_install+=(python3)
+  command -v 7z      >/dev/null 2>&1 || to_install+=(p7zip-full)
+
+  if [ ${#to_install[@]} -gt 0 ]; then
+    log "Instalando dependências: ${to_install[*]}"
+    apt-get install -y "${to_install[@]}"
   fi
 }
 
@@ -295,7 +294,7 @@ cleanup() {
 main() {
   parse_args "$@"
   check_root
-  check_deps
+  ensure_deps
   confirm_device
 
   WORK_DIR=$(mktemp -d /tmp/telas-usb.XXXXXX)
