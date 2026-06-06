@@ -69,7 +69,6 @@ ensure_deps() {
   command -v xorriso >/dev/null 2>&1 || to_install+=(xorriso)
   command -v wget    >/dev/null 2>&1 || to_install+=(wget)
   command -v python3 >/dev/null 2>&1 || to_install+=(python3)
-  command -v 7z      >/dev/null 2>&1 || to_install+=(p7zip-full)
 
   if [ ${#to_install[@]} -gt 0 ]; then
     log "Instalando dependências: ${to_install[*]}"
@@ -117,19 +116,18 @@ download_iso() {
   printf '%s' "$iso_path"
 }
 
-extract_iso() {
+extract_grub_cfg() {
   local iso_path="$1"
-  log "Extraindo ISO..."
-  mkdir -p "$WORK_DIR/iso_src"
-  7z x "$iso_path" -o"$WORK_DIR/iso_src" >/dev/null || \
-    fail "Falha ao extrair ISO — arquivo pode estar corrompido."
-  chmod -R u+w "$WORK_DIR/iso_src"
-  log "ISO extraída."
+  log "Extraindo grub.cfg do ISO..."
+  xorriso -osirrox on \
+    -indev "$iso_path" \
+    -extract /boot/grub/grub.cfg "$WORK_DIR/grub.cfg" \
+    >/dev/null 2>&1 || fail "Não foi possível extrair grub.cfg do ISO."
 }
 
 patch_grub() {
-  local grub_cfg="$WORK_DIR/iso_src/boot/grub/grub.cfg"
-  [ -f "$grub_cfg" ] || fail "grub.cfg não encontrado no ISO."
+  local grub_cfg="$WORK_DIR/grub.cfg"
+  [ -f "$grub_cfg" ] || fail "grub.cfg não encontrado."
   log "Patchando GRUB para boot automático..."
   python3 - "$grub_cfg" <<'EOF'
 import sys, re
@@ -152,7 +150,7 @@ EOF
 }
 
 generate_user_data() {
-  local server_dir="$WORK_DIR/iso_src/server"
+  local server_dir="$WORK_DIR/server"
   mkdir -p "$server_dir"
 
   # Lê valores defaults do setup_dev_machine.sh
@@ -252,65 +250,24 @@ YAML
 
 OUTPUT_ISO=""
 
-repack_iso() {
+inject_into_iso() {
+  local iso_path="$1"
   OUTPUT_ISO="$WORK_DIR/telas-${BOX_ID}.iso"
-  log "Reempacotando ISO..."
-  log "Verificando arquivos de boot necessários..."
+  log "Injetando configurações no ISO original..."
 
-  local iso_src="$WORK_DIR/iso_src"
-  local mbr_img="" efi_img="" eltorito_img=""
-
-  # Detecta paths dos arquivos de boot (variam entre versões do Ubuntu)
-  for f in \
-      "boot/grub/i386-pc/boot_hybrid.img" \
-      "boot/grub/bios.img" \
-      "isolinux/isohdpfx.bin"; do
-    if [ -f "$iso_src/$f" ]; then mbr_img="$iso_src/$f"; break; fi
-  done
-
-  for f in "boot/grub/efi.img" "EFI/efi.img" ".disk/boot/grub/efi.img"; do
-    if [ -f "$iso_src/$f" ]; then efi_img="$iso_src/$f"; break; fi
-  done
-
-  for f in "boot/grub/i386-pc/eltorito.img" "boot/grub/bios.img" "isolinux/isolinux.bin"; do
-    if [ -f "$iso_src/$f" ]; then eltorito_img="$iso_src/$f"; break; fi
-  done
-
-  if [ -z "$mbr_img" ] || [ -z "$efi_img" ]; then
-    log "Arquivos de boot encontrados:"
-    find "$iso_src/boot" -name "*.img" 2>/dev/null | head -20 >&2 || true
-    fail "Arquivos de boot não encontrados. Estrutura do ISO inesperada."
-  fi
-
-  local eltorito_rel="${eltorito_img#$iso_src/}"
-  log "MBR : $mbr_img"
-  log "EFI : $efi_img"
-  log "Boot: $eltorito_rel"
-
-  xorriso -as mkisofs \
-    -r \
-    -V "TELAS-${BOX_ID}" \
-    -o "$OUTPUT_ISO" \
-    -J --joliet-long \
-    -b "$eltorito_rel" \
-    -c boot.catalog \
-    -no-emul-boot \
-    -boot-load-size 4 \
-    -boot-info-table \
-    --grub2-boot-info \
-    --grub2-mbr "$mbr_img" \
-    -append_partition 2 28732ac11ff8d211ba4b00a0c93ec93b "$efi_img" \
-    -appended_part_as_gpt \
-    -eltorito-alt-boot \
-    -e '--interval:appended_partition_2:::' \
-    -no-emul-boot \
-    -partition_offset 16 \
-    "$iso_src" || fail "xorriso falhou ao reempacotar o ISO."
+  xorriso \
+    -indev  "$iso_path" \
+    -outdev "$OUTPUT_ISO" \
+    -map    "$WORK_DIR/grub.cfg"            /boot/grub/grub.cfg \
+    -map    "$WORK_DIR/server/user-data"    /server/user-data \
+    -map    "$WORK_DIR/server/meta-data"    /server/meta-data \
+    -boot_image any replay \
+    2>&1 | grep -v '^xorriso : UPDATE' || true
 
   if [ ! -f "$OUTPUT_ISO" ]; then
-    fail "ISO não foi criado em $OUTPUT_ISO"
+    fail "xorriso não criou o ISO de saída."
   fi
-  log "ISO reempacotado: $OUTPUT_ISO"
+  log "ISO pronto: $OUTPUT_ISO"
 }
 
 write_to_usb() {
@@ -336,10 +293,10 @@ main() {
 
   local iso_path
   iso_path=$(download_iso)
-  extract_iso "$iso_path"
+  extract_grub_cfg "$iso_path"
   patch_grub
   generate_user_data
-  repack_iso
+  inject_into_iso "$iso_path"
   write_to_usb "$OUTPUT_ISO"
 
   echo ""
