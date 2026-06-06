@@ -12,14 +12,15 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-UBUNTU_ISO_NAME="ubuntu-24.04.2-live-server-amd64.iso"
-UBUNTU_ISO_URL="https://releases.ubuntu.com/24.04/${UBUNTU_ISO_NAME}"
+UBUNTU_ISO_NAME="ubuntu-24.04.4-live-server-amd64.iso"
+UBUNTU_ISO_URL="https://releases.ubuntu.com/24.04.4/${UBUNTU_ISO_NAME}"
 ISO_CACHE_DIR="${HOME}/.cache/telas-box-isos"
 WORK_DIR=""
 
 BOX_ID=""
 DEVICE=""
 TAILSCALE_KEY=""
+ISO_PATH_OVERRIDE=""
 
 # ---------------------------------------------------------------------------
 log()  { printf '\033[1;36m[gerar-usb]\033[0m %s\n' "$*"; }
@@ -28,11 +29,13 @@ fail() { printf '\033[1;31m[gerar-usb] ERRO:\033[0m %s\n' "$*" >&2; exit 1; }
 
 usage() {
   cat <<EOF
-Uso: sudo $0 --box-id BOX_ID --device /dev/sdX [--tailscale-key TSKEY]
+Uso: sudo $0 --box-id BOX_ID --device /dev/sdX [opções]
 
-  --box-id         ID único da box (ex: box-001)      [obrigatório]
-  --device         Dispositivo USB (ex: /dev/sdb)     [obrigatório]
-  --tailscale-key  Auth key do Tailscale               [opcional]
+  --box-id         ID único da box (ex: box-001)                [obrigatório]
+  --device         Dispositivo USB (ex: /dev/sdb)               [obrigatório]
+  --tailscale-key  Auth key do Tailscale                         [opcional]
+  --iso            Caminho para ISO Ubuntu já baixada            [opcional]
+                   (evita o download; útil se a URL mudar)
 
 O dispositivo USB será completamente sobrescrito.
 EOF
@@ -43,9 +46,10 @@ parse_args() {
   if [ $# -eq 0 ]; then usage; fi
   while [ $# -gt 0 ]; do
     case "$1" in
-      --box-id)        BOX_ID="$2";        shift 2 ;;
-      --device)        DEVICE="$2";        shift 2 ;;
-      --tailscale-key) TAILSCALE_KEY="$2"; shift 2 ;;
+      --box-id)        BOX_ID="$2";             shift 2 ;;
+      --device)        DEVICE="$2";             shift 2 ;;
+      --tailscale-key) TAILSCALE_KEY="$2";      shift 2 ;;
+      --iso)           ISO_PATH_OVERRIDE="$2";  shift 2 ;;
       -h|--help)       usage ;;
       *) fail "Argumento desconhecido: $1" ;;
     esac
@@ -84,14 +88,32 @@ confirm_device() {
 
 # ---------------------------------------------------------------------------
 download_iso() {
+  if [ -n "$ISO_PATH_OVERRIDE" ]; then
+    if [ ! -f "$ISO_PATH_OVERRIDE" ]; then
+      fail "ISO não encontrada em: $ISO_PATH_OVERRIDE"
+    fi
+    log "Usando ISO fornecida: $ISO_PATH_OVERRIDE"
+    printf '%s' "$ISO_PATH_OVERRIDE"
+    return 0
+  fi
+
   mkdir -p "$ISO_CACHE_DIR"
   local iso_path="$ISO_CACHE_DIR/$UBUNTU_ISO_NAME"
-  if [ -f "$iso_path" ]; then
+
+  if [ -f "$iso_path" ] && [ "$(stat -c%s "$iso_path")" -gt 1000000 ]; then
     log "ISO em cache: $iso_path"
-  else
-    log "Baixando $UBUNTU_ISO_NAME..."
-    wget -c --show-progress -O "$iso_path" "$UBUNTU_ISO_URL"
+    printf '%s' "$iso_path"
+    return 0
   fi
+
+  log "Baixando $UBUNTU_ISO_NAME..."
+  log "URL: $UBUNTU_ISO_URL"
+  if ! wget -c --show-progress -O "$iso_path" "$UBUNTU_ISO_URL"; then
+    rm -f "$iso_path"
+    fail "Download falhou. Baixe manualmente e use --iso /caminho/para/ubuntu.iso
+  Download direto: https://ubuntu.com/download/server"
+  fi
+
   printf '%s' "$iso_path"
 }
 
