@@ -1,15 +1,21 @@
-#cloud-config
 autoinstall:
   version: 1
+
   identity:
-    realname: "José Santos"
-    hostname: ubuntu-desktop
+    realname: "Telas Box"
+    hostname: telas-box
     username: telas
     password: "$y$j9T$OhqrINdty2I6i4C6p6Mxc.$voXUZ4zGpvnMFggMVHWkoP3hwu1w94oQPyt7DisUxp0"
+
   locale: en_US.UTF-8
   keyboard:
     layout: us
   timezone: "America/New_York"
+
+  storage:
+    layout:
+      name: lvm
+
   packages:
     - ca-certificates
     - curl
@@ -17,37 +23,22 @@ autoinstall:
     - gnupg
     - jq
     - wget
+
   codecs:
     install: true
   drivers:
     install: true
+
   ssh:
     install-server: true
     authorized-keys:
       - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBPoeRr1TEfBSiZTjZoWIRvFh/k6e+zJmov2uO5R61M4 victoremmanuelmn@gmail.com
       - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCSGTm0GwW61itb9ZXhG1Gc7sSud5T/v9uoclz9Jr1HRlBnFowPROO/4wDTC0ALrBQELEvDo1lEnh2SBJS5GuzSShG2OoMXdfQiCUIyOZT+tOdjLiDcgi7XkjT126jrknS1Diw+ySKcKuJPPeSF6FBVOR7FDPrInTqHm+oHoYdyo71DV7vI/YqUTpKTc4NaCZJ8IPSliXvjMM9xHBWhm3svpRoVuD6FySsEhWaXt5KnJjhBfKktrWevnBZU/GbjOiveAztQf0shSA9j16oTM7TAt3Jg5RbPl9lv1DlmsJmD4VXaeOJEvsc6hNlqcp1wsMSS1WOIg9uac+wkin6dP5aV9VVB6c/LPY4ZKtMqlZ9BmuqciZ+P70pSvPllXCBAgwDWm989b6Xh9TCe3ObY1KosgfJFoDHRG/CkyAgs2trqyfe6xvvg3gxeN7gzaIujs42Fc0zFDcFG3lqe86UCScPjYnxQKB8AJYVe9a3ZuTBpC/Gh9mlXWbkbKl6vNHJAtjIwdA1mhF9OnxJxPce2WX6xpZsJgZ2H/b63k0RXR7PtaRIsr8wiWnEXmHZcuatkkKrmTTTm8sUhD++s4VvR6bjECtxI/QMGV3ie6iBFtaQVshH8BeRWx4CRcSjJUzNGWeJPH3OkstRRQ6B8KWrbMOs02K18GBJFE/X+X39uuWGhVQ== kevindiegodasilvasousa@gmail.com
+
   updates: all
   shutdown: reboot
+
   late-commands:
-    - |
-      mkdir -p /target/root/inicializador-box
-      chroot /target /bin/bash -c 'cd /root && rm -rf inicializador-box && mkdir -p inicializador-box && curl -fsSL "https://github.com/InnovatioLab/inicializador-box/archive/refs/heads/main.tar.gz" | tar -xz --strip-components=1 -C /root/inicializador-box'
-    - |
-      chroot /target /bin/bash -c 'cat > /etc/systemd/system/box-firstboot.service << "EOF"
-      [Unit]
-      Description=Run box bootstrap on first boot
-      ConditionPathExists=/root/inicializador-box/setup_dev_machine.sh
-      ConditionPathExists=!/etc/box/bootstrap.complete
-      After=network-online.target
-      Wants=network-online.target
-
-      [Service]
-      Type=oneshot
-      ExecStart=/bin/bash /root/inicializador-box/setup_dev_machine.sh
-      RemainAfterExit=yes
-
-      [Install]
-      WantedBy=multi-user.target
-      EOF'
-    - chroot /target /bin/bash -c 'chmod 644 /etc/systemd/system/box-firstboot.service'
-    - chroot /target /bin/bash -c 'systemctl enable box-firstboot.service || true'
+    - chroot /target bash -c 'mkdir -p /root/inicializador-box && curl -fsSL "https://github.com/InnovatioLab/inicializador-box/archive/refs/heads/main.tar.gz" | tar -xz --strip-components=1 -C /root/inicializador-box'
+    - chroot /target bash -c 'printf "[Unit]\nDescription=Bootstrap da telas box no primeiro boot\nConditionPathExists=/root/inicializador-box/setup_dev_machine.sh\nConditionPathExists=!/etc/box/bootstrap.complete\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nType=oneshot\nExecStart=/bin/bash /root/inicializador-box/setup_dev_machine.sh\nRemainAfterExit=yes\n\n[Install]\nWantedBy=multi-user.target\n" > /etc/systemd/system/box-firstboot.service'
+    - chroot /target bash -c 'chmod 644 /etc/systemd/system/box-firstboot.service && systemctl enable box-firstboot.service'
