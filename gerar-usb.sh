@@ -66,14 +66,15 @@ check_root() {
 
 check_deps() {
   local missing=()
-  for cmd in xorriso wget python3 lsblk; do
+  for cmd in xorriso wget python3 lsblk 7z; do
     command -v "$cmd" >/dev/null 2>&1 || missing+=("$cmd")
   done
   if [ ${#missing[@]} -gt 0 ]; then
+    local pkgs="${missing[*]}"
+    pkgs="${pkgs//7z/p7zip-full}"
     fail "Dependências ausentes: ${missing[*]}.
-  Ubuntu/Debian : sudo apt-get install ${missing[*]}
-  NixOS         : nix-env -iA $(printf 'nixpkgs.%s ' "${missing[@]}")
-  NixOS (sudo)  : sudo env PATH=\"\$PATH\" ./gerar-usb.sh ..."
+  Ubuntu/Debian : sudo apt-get install ${pkgs}
+  NixOS         : nix-env -iA nixpkgs.xorriso nixpkgs.wget nixpkgs.p7zip"
   fi
 }
 
@@ -119,13 +120,12 @@ download_iso() {
 
 extract_iso() {
   local iso_path="$1"
-  log "Extraindo ISO (via mount)..."
-  mkdir -p "$WORK_DIR/iso_mnt" "$WORK_DIR/iso_src"
-  mount -o loop,ro "$iso_path" "$WORK_DIR/iso_mnt"
-  cp -a "$WORK_DIR/iso_mnt/." "$WORK_DIR/iso_src/"
-  umount "$WORK_DIR/iso_mnt"
+  log "Extraindo ISO..."
+  mkdir -p "$WORK_DIR/iso_src"
+  7z x "$iso_path" -o"$WORK_DIR/iso_src" >/dev/null || \
+    fail "Falha ao extrair ISO — arquivo pode estar corrompido."
   chmod -R u+w "$WORK_DIR/iso_src"
-  log "ISO extraída com sucesso."
+  log "ISO extraída."
 }
 
 patch_grub() {
@@ -288,7 +288,6 @@ write_to_usb() {
 }
 
 cleanup() {
-  mountpoint -q "$WORK_DIR/iso_mnt" 2>/dev/null && umount "$WORK_DIR/iso_mnt" || true
   [ -n "$WORK_DIR" ] && [ -d "$WORK_DIR" ] && rm -rf "$WORK_DIR"
 }
 
