@@ -134,15 +134,28 @@ import sys, re
 path = sys.argv[1]
 with open(path) as f:
     text = f.read()
+
 # Boot imediato, sem esperar o menu
 text = re.sub(r'^set timeout=\d+', 'set timeout=0', text, flags=re.MULTILINE)
-# Injeta autoinstall na primeira linha "linux" com vmlinuz
+text = re.sub(r'^set timeout_style=\w+', 'set timeout_style=menu', text, flags=re.MULTILINE)
+
+PARAMS = 'autoinstall ds=nocloud;s=file:///cdrom/server/'
+
 def inject(m):
     line = m.group(0)
-    if 'autoinstall' not in line:
-        line = line.rstrip() + ' autoinstall ds=nocloud;s=file:///cdrom/server/'
-    return line
+    if 'autoinstall' in line:
+        return line
+    # Desktop ISO tem '---' separando params do kernel do init.
+    # Os params de autoinstall precisam ficar ANTES do '---'.
+    if ' --- ' in line:
+        return line.replace(' --- ', f' {PARAMS} --- ', 1)
+    if line.rstrip().endswith(' ---'):
+        return line.rstrip()[:-3] + f'{PARAMS} ---'
+    # Server ISO ou entradas sem '---': adiciona no final
+    return line.rstrip() + ' ' + PARAMS
+
 text = re.sub(r'^\s+linux\s+\S*vmlinuz\S*.*$', inject, text, count=1, flags=re.MULTILINE)
+
 with open(path, 'w') as f:
     f.write(text)
 print("grub.cfg patchado.")
