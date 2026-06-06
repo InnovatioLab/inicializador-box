@@ -20,6 +20,45 @@ install_anydesk() {
   apt-get install -y anydesk
 }
 
+disable_auto_updates() {
+  log "Desativando atualizações automáticas..."
+
+  # Desliga o daemon de upgrade não assistido
+  systemctl disable unattended-upgrades.service 2>/dev/null || true
+  systemctl stop    unattended-upgrades.service 2>/dev/null || true
+  apt-get remove -y unattended-upgrades 2>/dev/null || true
+
+  # Garante que apt não vai baixar ou instalar nada por conta própria
+  cat > /etc/apt/apt.conf.d/20auto-upgrades <<EOF
+APT::Periodic::Update-Package-Lists "0";
+APT::Periodic::Download-Upgradeable-Packages "0";
+APT::Periodic::AutocleanInterval "0";
+APT::Periodic::Unattended-Upgrade "0";
+EOF
+
+  # Script que suprime o popup do update-manager no login do GNOME
+  cat > /usr/local/bin/suppress-update-notifications.sh <<'EOF'
+#!/bin/bash
+gsettings set com.ubuntu.update-manager launch-time 0 2>/dev/null || true
+pkill -f update-manager 2>/dev/null || true
+EOF
+  chmod +x /usr/local/bin/suppress-update-notifications.sh
+
+  # Autostart para rodar o script acima em toda sessão do GNOME
+  local autostart_dir="/home/$TARGET_USER/.config/autostart"
+  install -d -m 0755 "$autostart_dir"
+  cat > "$autostart_dir/suppress-updates.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Suppress Update Notifications
+Exec=/usr/local/bin/suppress-update-notifications.sh
+X-GNOME-Autostart-enabled=true
+EOF
+  chown -R "$TARGET_USER:$TARGET_USER" "$autostart_dir"
+
+  log "Atualizações automáticas desativadas."
+}
+
 configure_autologin() {
   if [ "${ENABLE_AUTOLOGIN:-true}" != "true" ]; then
     log "Autologin desabilitado por configuração"
@@ -68,6 +107,7 @@ main() {
   chown -R "$TARGET_USER:$TARGET_USER" "$TARGET_HOME"
 
   install_anydesk
+  disable_auto_updates
   configure_autologin
 
   log "Bootstrap do host concluído"

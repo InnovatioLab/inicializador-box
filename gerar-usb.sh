@@ -119,9 +119,13 @@ download_iso() {
 
 extract_iso() {
   local iso_path="$1"
-  log "Extraindo ISO..."
-  xorriso -osirrox on -indev "$iso_path" -extract / "$WORK_DIR/iso_src" >/dev/null 2>&1
+  log "Extraindo ISO (via mount)..."
+  mkdir -p "$WORK_DIR/iso_mnt" "$WORK_DIR/iso_src"
+  mount -o loop,ro "$iso_path" "$WORK_DIR/iso_mnt"
+  cp -a "$WORK_DIR/iso_mnt/." "$WORK_DIR/iso_src/"
+  umount "$WORK_DIR/iso_mnt"
   chmod -R u+w "$WORK_DIR/iso_src"
+  log "ISO extraída com sucesso."
 }
 
 patch_grub() {
@@ -284,6 +288,7 @@ write_to_usb() {
 }
 
 cleanup() {
+  mountpoint -q "$WORK_DIR/iso_mnt" 2>/dev/null && umount "$WORK_DIR/iso_mnt" || true
   [ -n "$WORK_DIR" ] && [ -d "$WORK_DIR" ] && rm -rf "$WORK_DIR"
 }
 
@@ -306,11 +311,19 @@ main() {
   write_to_usb "$output_iso"
 
   echo ""
-  log "USB pronto para BOX_ID=${BOX_ID}"
-  log ""
-  log "  1. Plugue no NUC com boot por USB habilitado"
-  log "  2. Ligue — instala tudo sozinho (~15 min), reinicia"
-  log "  3. No primeiro login o player já sobe automaticamente"
+  log "✓ USB pronto para BOX_ID=${BOX_ID}"
+  echo ""
+  log "PRÓXIMOS PASSOS:"
+  log "  1. Plugue no NUC e ligue — pressione F10 para selecionar boot pelo USB"
+  log "  2. Instalação roda sozinha (~20 min) e reinicia automaticamente"
+  log "  3. No primeiro boot o player sobe automaticamente"
+  echo ""
+  log "CONFIGURAÇÃO MANUAL OBRIGATÓRIA NA BIOS (uma vez por máquina):"
+  log "  Antes de colocar em produção, entre na BIOS do NUC (tecla F2 ao ligar)"
+  log "  e configure:"
+  log "    Power → After Power Failure → Power On"
+  log "  Isso garante que a box liga sozinha após queda de energia."
+  echo ""
 }
 
 main "$@"
